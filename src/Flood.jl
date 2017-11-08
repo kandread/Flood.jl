@@ -24,5 +24,26 @@ end
 
 const HVAR = QVAR
 
+# domain data structure
+struct Domain
+    xul :: Float
+    yul :: Float
+    xres :: Float
+    yres :: Float
+    nrows :: Int
+    ncols :: Int
+end
+
+# parameter structure
+struct Params
+    dem_file :: String
+    sim_time :: Float
+    init_tstep :: Float
+    fpfric :: Float
+    saveint :: Float
+    bci_file :: String
+    bdy_file :: String
+end
+
 
 end
