@@ -1,0 +1,20 @@
+# Simple grid only test case of NSWE grid boundaries
+# uses a point source in the centre of a cross of channels etched into the dem
+# no 1D river channel.
+#
+# Mark Trigg 1/7/2008
+#
+# version 2 - MT 24/7/2008 - added stage file to test location of output is correct
+#
+DEMfile                  dtm.asc
+resroot                  test
+dirroot             output
+sim_time               86400.0
+initial_tstep            1
+massint                  360.0
+saveint                  86400.0
+fpfric             0.06
+bcifile                  qfix.bci
+adaptoff
+stagefile         test.stage
+
