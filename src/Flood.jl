@@ -7,6 +7,9 @@ const g = 9.81
 const alpha = 0.7
 const depth_thresh = 0.001
 
+# grid types
+@enum Grid H QX QY
+
 # boundary conditions
 abstract type BC end
 
@@ -80,7 +83,7 @@ function read_params(filename::String)
     bdy_file = haskey(data, "bdyfile") ? data["bdyfile"] : nothing
     saveint = haskey(data, "saveint") ? parse(Float32, data["saveint"]) : nothing
     outdir = haskey(data, "dirroot") ? data["dirroot"] : nothing
-    return Params(dem_file, sim_time, init_tstep, fpfric, saveint, bci_file, bdy_file)
+    return Params(dem_file, sim_time, init_tstep, fpfric, saveint, bci_file, bdy_file, outdir)
 end
 
 # raster input and output
@@ -94,7 +97,29 @@ function read_raster(filename::String)
     jtype = eval(parse(GDAL.getdatatypename(GDAL.getrasterdatatype(band))))
     data = Array{jtype}(nrows*ncols)
     GDAL.rasterio(band, GDAL.GF_Read, 0, 0, ncols, nrows, data, ncols, nrows, dtype, 0, 0)
+    GDAL.close(ds)
     return reshape(data, nrows, ncols)
+end
+
+function write_raster(filename::String, data::Array{Float32}, dom::Domain, edges::Grid)
+    GDAL.registerall()
+    gt = Array([dom.xul, dom.xres, 0., dom.yul, 0., dom.yres])
+    if edges == QX
+        nrows = dom.nrows
+        ncols = dom.ncols + 1
+    else if edges == QY
+        nrows = dom.nrows + 1
+        ncols = dom.ncols
+    else
+        nrows = dom.nrows
+        ncols = dom.ncols
+    end
+    driver = GDAL.getdriverbyname("GTiff")
+    ds = GDAL.create(driver, filename, ncols, nrows, 1, GDAL.GDT_Float32, C_NULL)
+    GDAL.setgeotransform(ds, gt)
+    band = GDAL.getrasterband(ds)
+    GDAL.rasterio(band, GDAL.GF_Write, 0, 0, ncols, nrows, data, ncols, nrows, GDAL.GDT_Float32, 0, 0)
+    GDAL.close(ds)
 end
 
 
