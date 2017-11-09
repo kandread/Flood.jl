@@ -11,9 +11,9 @@ const depth_thresh = 0.001
 @enum Grid H QX QY
 
 # boundary conditions
-abstract type BC end
+abstract type BoundaryCondition end
 
-struct HFIX <: BC
+struct HFIX <: BoundaryCondition
     values :: Array{Real, 1}
 end
 
@@ -21,7 +21,7 @@ const QFIX = HFIX
 
 const FREE = HFIX
 
-struct QVAR <: BC
+struct QVAR <: BoundaryCondition
     values :: Array{Real, 1}
     time :: Array{Int, 1}
     prev_time :: Int
@@ -98,7 +98,7 @@ function read_raster(filename::String)
     data = Array{jtype}(nrows*ncols)
     GDAL.rasterio(band, GDAL.GF_Read, 0, 0, ncols, nrows, data, ncols, nrows, dtype, 0, 0)
     GDAL.close(ds)
-    return reshape(data, nrows, ncols)
+    return data
 end
 
 function write_raster(filename::String, data::Array{Float32}, dom::Domain, edges::Grid)
@@ -107,7 +107,7 @@ function write_raster(filename::String, data::Array{Float32}, dom::Domain, edges
     if edges == QX
         nrows = dom.nrows
         ncols = dom.ncols + 1
-    else if edges == QY
+    elseif edges == QY
         nrows = dom.nrows + 1
         ncols = dom.ncols
     else
@@ -122,6 +122,64 @@ function write_raster(filename::String, data::Array{Float32}, dom::Domain, edges
     GDAL.close(ds)
 end
 
+# boundary conditions
+abstract type Boundary end
+
+type Point <: Boundary end
+
+type West <: Boundary end
+
+type East <: Boundary end
+
+type North <: Boundary end
+
+type South <: Boundary end
+
+function get_boundary_type(str::String)
+    bctype = Dict("P" => Point, "W" => West, "E" => East, "N" => North, "S" => South)
+    return bctype[str.split()[1]]
+end
+
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::String)
+end
+
+function read_bci(filename::String, dom::Domain)
+    bci = Array{BoundaryCondition}(dom.nrows * dom.ncols)
+    open(filename, "r") do f
+        for line in eachline(f)
+            bctype = get_boundary_type(line)
+            set_boundary!(bci, bctype, line)
+        end
+    end
+    return bci
+end
+
+function read_bdy(filename::String)
+    bdy = Dict{String, Array{Float32, 2}}()
+    name = ""
+    t = 0
+    open(filename, "r") do f
+        readline(f)
+        for line in eachline(f)
+            if length(line) > 0
+                tokens = split(line)
+                if length(tokens) < 2
+                    name = tokens[1]
+                else
+                    if isa(parse(tokens[2]), Number)
+                        bdy[name][t, :] = [parse(Float32, s) for s in tokens]
+                        t += 1
+                    else
+                        duration = parse(Int, tokens[1])
+                        bdy[name] = Array{Float32, 2}(duration, 2)
+                        t = 1
+                    end
+                end
+            end
+        end
+    end
+    return bdy
+end
 
 # main function
 function run(paramfile::String)
