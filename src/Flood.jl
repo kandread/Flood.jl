@@ -1,5 +1,7 @@
 module Flood
 
+import GDAL
+
 # constants
 const g = 9.81
 const alpha = 0.7
@@ -32,6 +34,17 @@ struct Domain
     yres :: Float32
     nrows :: Int
     ncols :: Int
+end
+
+function read_domain(filename::String)
+    GDAL.registerall()
+    ds = GDAL.open(filename, GDAL.GA_ReadOnly)
+    nrows = GDAL.getrasterysize(ds)
+    ncols = GDAL.getrasterxsize(ds)
+    gt = zeros(6)
+    GDAL.getgeotransform(ds, gt)
+    dom = Domain(gt[1], gt[4], gt[2], gt[6], nrows, ncols)
+    return dom
 end
 
 # parameter structure
@@ -68,6 +81,31 @@ function read_params(filename::String)
     saveint = haskey(data, "saveint") ? parse(Float32, data["saveint"]) : nothing
     outdir = haskey(data, "dirroot") ? data["dirroot"] : nothing
     return Params(dem_file, sim_time, init_tstep, fpfric, saveint, bci_file, bdy_file)
+end
+
+# raster input and output
+function read_raster(filename::String)
+    GDAL.registerall()
+    ds = GDAL.open(filename, GDAL.GA_ReadOnly)
+    nrows = GDAL.getrasterysize(ds)
+    ncols = GDAL.getrasterxsize(ds)
+    band = GDAL.getrasterband(ds, 1)
+    dtype = GDAL.getrasterdatatype(band)
+    jtype = eval(parse(GDAL.getdatatypename(GDAL.getrasterdatatype(band))))
+    data = Array{jtype}(nrows*ncols)
+    GDAL.rasterio(band, GDAL.GF_Read, 0, 0, ncols, nrows, data, ncols, nrows, dtype, 0, 0)
+    return reshape(data, nrows, ncols)
+end
+
+
+# main function
+function run(paramfile::String)
+    params = read_params(paramfile)
+    z = read_raster(params.dem_file)
+    domain = read_domain(params.dem_file)
+    n = params.fpfric
+    dx = domain.xres
+    dy = -domain.yres
 end
 
 end
