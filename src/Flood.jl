@@ -13,11 +13,20 @@ const depth_thresh = 0.001
 # boundary conditions
 abstract type BoundaryCondition end
 
+type NONE <: BoundaryCondition end
+
 struct HFIX <: BoundaryCondition
-    values :: Array{Real, 1}
+    values :: Array{Float32, 1}
+end
+
+function hfix(defn::String)
+    values = [parse(Float32, split(defn)[5])]
+    return HFIX(values)
 end
 
 const QFIX = HFIX
+
+const qfix = hfix
 
 const FREE = HFIX
 
@@ -137,18 +146,39 @@ type South <: Boundary end
 
 function get_boundary_type(str::String)
     bctype = Dict("P" => Point, "W" => West, "E" => East, "N" => North, "S" => South)
-    return bctype[str.split()[1]]
+    return bctype[split(str)[1]]
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::String)
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::String, dom::Domain)
+    tokens = split(defn)
+    x = parse(Float32, tokens[2])
+    y = parse(Float32, tokens[3])
+    BC = eval(parse(lowercase(tokens[4])))
+    j = trunc(Int, (x - dom.xul) / dom.xres) + 1
+    i = trunc(Int, (y - dom.yul) / dom.yres) + 1
+    pos = dom.nrows * j + i
+    bci[pos] = BC(defn)
+end
+
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::West, defn::String, dom::Domain)
+end
+
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::East, defn::String, dom::Domain)
+end
+
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::North, defn::String, dom::Domain)
+end
+
+function set_boundary!(bci::Array{BoundaryCondition}, bctype::South, defn::String, dom::Domain)
 end
 
 function read_bci(filename::String, dom::Domain)
     bci = Array{BoundaryCondition}(dom.nrows * dom.ncols)
+    bci[:] = NONE
     open(filename, "r") do f
         for line in eachline(f)
             bctype = get_boundary_type(line)
-            set_boundary!(bci, bctype, line)
+            set_boundary!(bci, bctype(), line)
         end
     end
     return bci
