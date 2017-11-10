@@ -27,15 +27,20 @@ const QFIX = HFIX
 const qfix = hfix
 
 struct FREE <: BoundaryCondition
+    value :: Nullable{Float32}
 end
 
-struct QVAR <: BoundaryCondition
+FREE() = FREE(0)
+
+mutable struct QVAR <: BoundaryCondition
     name :: String
     prev_time :: Int
+    time :: Array{Float32}
+    values :: Array{Float32}
 end
 
 function qvar(defn::String)
-    return QVAR(split(defn)[5], 0)
+    return QVAR(split(defn)[5], 0, [], [])
 end
 
 const HVAR = QVAR
