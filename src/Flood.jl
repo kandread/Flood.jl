@@ -239,20 +239,22 @@ function read_bdy!(bci::Dict{Int64, BoundaryCondition}, filename::String)
                 tokens = split(line)
                 if length(tokens) < 2
                     name = tokens[1]
+                    pos = [k for (k, v) in bci if isa(v, Union{QVAR, HVAR}) && v.name == name][1]
                 else
                     if isa(parse(tokens[2]), Number)
-                        bdy[name][t, :] = [parse(Float32, s) for s in tokens]
+                        bci[pos].time[t] = parse(Float32, tokens[2])
+                        bci[pos].values[t] = parse(Float32, tokens[1])
                         t += 1
                     else
                         duration = parse(Int, tokens[1])
-                        bdy[name] = Dict{Int, Float32, 2}(duration, 2)
+                        bci[pos].time = zeros(duration)
+                        bci[pos].values = zeros(duration)
                         t = 1
                     end
                 end
             end
         end
     end
-    return bdy
 end
 
 # floodplain flow
