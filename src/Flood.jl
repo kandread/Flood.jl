@@ -291,15 +291,15 @@ function calc_sx!(Sx::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom:
     # inner domain
     for i in 1:dom.nrows
         for j in 2:dom.ncols
-            Sx[i+(j-1)*dom.nrows] = -(h[i+(j-2)*dom.nrows] + z[i*(j-2)*dom.nrows] - h[i+(j-1)*dom.nrows] - z[i+(j-1)*dom.nrows])
+            Sx[i+(j-1)*dom.nrows] = -(h[i+(j-2)*dom.nrows] + z[i+(j-2)*dom.nrows] - h[i+(j-1)*dom.nrows] - z[i+(j-1)*dom.nrows])
         end
     end
     # west and east edges
     for i in 1:dom.nrows
-        if isa(bci[i], FREE)
+        if isa(get(bci, i, 0), FREE)
             Sx[i] = (bci[i] == 0.0) ? Sx[i+dom.nrows] : bci[i]
         end
-        if isa(bci[i+dom.ncols*dom.nrows], FREE)
+        if isa(get(bci, i+dom.ncols*dom.nrows, 0), FREE)
             Sx[i+dom.ncols*dom.nrows] = (bci[i+dom.ncols*dom.nrows] == 0.0) ? Sx[i+(dom.ncols-1)*dom.nrows] : bci[i+dom.ncols*dom.nrows]
         end
     end
@@ -310,15 +310,15 @@ function calc_sy!(Sy::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom:
     # inner domain
     for i in 2:dom.nrows
         for j in 1:dom.ncols
-            Sy[i+(j-1)*(dom.nrows+1)] = -(h[i-1+(j-1)*dom.nrows] + z[i-1*(j-1)*dom.nrows] - h[i+(j-1)*dom.nrows] - z[i+(j-1)*dom.nrows])
+            Sy[i+(j-1)*(dom.nrows+1)] = -(h[i-1+(j-1)*dom.nrows] + z[i-1+(j-1)*dom.nrows] - h[i+(j-1)*dom.nrows] - z[i+(j-1)*dom.nrows])
         end
     end
     # north and south edges
     for j in 1:dom.ncols
-        if isa(bci[1+(j-1)*dom.nrows], FREE)
+        if isa(get(bci, 1+(j-1)*dom.nrows, 0), FREE)
             Sy[1+(j-1)*(dom.nrows+1)] = (bci[1+(j-1)*dom.nrows] == 0.0) ? Sy[2+(j-1)*(dom.nrows+1)] : bci[1+(j-1)*dom.nrows]
         end
-        if isa(bci[1+j*(dom.nrows+1)], FREE)
+        if isa(get(bci, 1+j*(dom.nrows+1), 0), FREE)
             Sy[1+j*(dom.nrows+1)] = (bci[1+j*dom.nrows] == 0.0) ? Sy[j*(dom.nrows+1)] : bci[1+j*dom.nrows]
         end
     end
@@ -364,14 +364,14 @@ function calc_h!(h::Array{Float32}, Qx::Array{Float32}, Qy::Array{Float32}, dom:
     dy = -dom.yres
     for i in 1:dom.nrows
         for j in 1:dom.ncols
-            if isa(bci[i+(j-1)*dom.nrows], HFIX) || isa(bci[i+(j-1)*dom.nrows], HVAR)
+            if isa(get(bci, i+(j-1)*dom.nrows, 0), HFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), HVAR)
                 # FIXME: Interpolate time series
                 # h[i+(j-1)*dom.nrows] = interpolate_value(bci[i+(j-1)*dom.nrows], t)
                 h[i+(j-1)*dom.nrows] = bci[i+(j-1)*dom.nrows].values[1]
             else
                 h[i+(j-1)*dom.nrows] += (dt * (Qx[i+(j-1)*dom.nrows] - Qx[i+j*dom.nrows] + Qy[i+(j-1)*(dom.nrows+1)] - Qy[i+1+(j-1)*(dom.nrows+1)]) / (dx * dy))
             end
-            if isa(bci[i+(j-1)*dom.nrows], QFIX) || isa(bci[i+(j-1)*dom.nrows], QVAR)
+            if isa(get(bci, i+(j-1)*dom.nrows, 0), QFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), QVAR)
                 # FIXME: Interpolate time series
                 # h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t) * dt / dx
                 h[i+(j-1)*dom.nrows] += (bci[i+(j-1)*dom.nrows].values[1])
@@ -388,13 +388,14 @@ end
 function run(paramfile::String)
     params = read_params(paramfile)
     z = read_raster(params.dem_file)
-    domain = read_domain(params.dem_file)
+    z = convert(Array{Float32}, z)
+    dom = read_domain(params.dem_file)
     n = params.fpfric
-    h = zeros(dom.nrows*dom.ncols)
-    Qx = zeros(dom.nrows*(dom.ncols+1))
-    Qy = zeros((dom.nrows+1)*dom.ncols)
-    Sx = zeros(dom.nrows*(dom.ncols+1))
-    Sy = zeros((dom.nrows+1)*dom.ncols)
+    h = zeros(Float32, dom.nrows*dom.ncols)
+    Qx = zeros(Float32, dom.nrows*(dom.ncols+1))
+    Qy = zeros(Float32, (dom.nrows+1)*dom.ncols)
+    Sx = zeros(Float32, dom.nrows*(dom.ncols+1))
+    Sy = zeros(Float32, (dom.nrows+1)*dom.ncols)
     t = 0.0
     while t < params.sim_time
         dt = params.init_tstep
