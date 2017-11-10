@@ -228,9 +228,9 @@ function read_bci(filename::String, dom::Domain)
     return bci
 end
 
-function read_bdy(filename::String)
-    bdy = Dict{String, Dict{Int, Float32, 2}}()
+function read_bdy!(bci::Dict{Int64, BoundaryCondition}, filename::String)
     name = ""
+    pos = 0
     t = 0
     open(filename, "r") do f
         readline(f)
