@@ -28,15 +28,21 @@ const QFIX = HFIX
 
 const qfix = hfix
 
-const FREE = HFIX
+struct FREE <: BoundaryCondition
+end
 
 struct QVAR <: BoundaryCondition
-    values :: Array{Real, 1}
-    time :: Array{Int, 1}
+    name :: String
     prev_time :: Int
 end
 
+function qvar(defn::String)
+    return QVAR(split(defn)[5], 0)
+end
+
 const HVAR = QVAR
+
+const hvar = qvar
 
 # domain data structure
 struct Domain
@@ -156,20 +162,56 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::Strin
     BC = eval(parse(lowercase(tokens[4])))
     j = trunc(Int, (x - dom.xul) / dom.xres) + 1
     i = trunc(Int, (y - dom.yul) / dom.yres) + 1
-    pos = dom.nrows * j + i
+    pos = dom.nrows * (j - 1) + i
     bci[pos] = BC(defn)
 end
 
 function set_boundary!(bci::Array{BoundaryCondition}, bctype::West, defn::String, dom::Domain)
+    tokens = split(defn)
+    y1 = parse(Float32, tokens[2])
+    y2 = parse(Float32, tokens[3])
+    i1 = trunc(Int, (y1 - dom.yul) / dom.yres) + 1
+    i2 = trunc(Int, (y2 - dom.yul) / dom.yres) + 1
+    for i in i1:i2
+        pos = i
+        bci[pos] = FREE()
+    end
 end
 
 function set_boundary!(bci::Array{BoundaryCondition}, bctype::East, defn::String, dom::Domain)
+    tokens = split(defn)
+    y1 = parse(Float32, tokens[2])
+    y2 = parse(Float32, tokens[3])
+    i1 = trunc(Int, (y1 - dom.yul) / dom.yres) + 1
+    i2 = trunc(Int, (y2 - dom.yul) / dom.yres) + 1
+    for i in i1:i2
+        pos = dom.nrows * (dom.ncols - 1) + i
+        bci[pos] = FREE()
+    end
 end
 
 function set_boundary!(bci::Array{BoundaryCondition}, bctype::North, defn::String, dom::Domain)
+    tokens = split(defn)
+    x1 = parse(Float32, tokens[2])
+    x2 = parse(Float32, tokens[3])
+    j1 = trunc(Int, (x1 - dom.xul) / dom.xres) + 1
+    j2 = trunc(Int, (x2 - dom.xul) / dom.xres) + 1
+    for j in j1:j2
+        pos = dom.nrows * (j - 1) + 1
+        bci[pos] = FREE()
+    end
 end
 
 function set_boundary!(bci::Array{BoundaryCondition}, bctype::South, defn::String, dom::Domain)
+    tokens = split(defn)
+    x1 = parse(Float32, tokens[2])
+    x2 = parse(Float32, tokens[3])
+    j1 = trunc(Int, (x1 - dom.xul) / dom.xres) + 1
+    j2 = trunc(Int, (x2 - dom.xul) / dom.xres) + 1
+    for j in j1:j2
+        pos = dom.nrows * (j - 1) + dom.nrows - 1
+        bci[pos] = FREE()
+    end
 end
 
 function read_bci(filename::String, dom::Domain)
