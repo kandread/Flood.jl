@@ -175,9 +175,12 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::West, defn::St
     y2 = parse(Float32, tokens[3])
     i1 = trunc(Int, (y1 - dom.yul) / dom.yres) + 1
     i2 = trunc(Int, (y2 - dom.yul) / dom.yres) + 1
-    for i in i1:i2
-        pos = i
+    pos = min(i1, i2)
+    dist = 0.0
+    while pos <= dom.nrows && dist < abs(dom.yres)
         bci[pos] = FREE()
+        pos +=1
+        dist += abs(dom.yres)
     end
 end
 
@@ -187,9 +190,12 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::East, defn::St
     y2 = parse(Float32, tokens[3])
     i1 = trunc(Int, (y1 - dom.yul) / dom.yres) + 1
     i2 = trunc(Int, (y2 - dom.yul) / dom.yres) + 1
-    for i in i1:i2
-        pos = dom.nrows * (dom.ncols - 1) + i
-        bci[pos] = FREE()
+    pos = min(i1, i2)
+    dist = 0.0
+    while pos <= dom.nrows && dist < abs(dom.yres)
+        bci[pos+(dom.ncols-1)*dom.nrows] = FREE()
+        pos +=1
+        dist += abs(dom.yres)
     end
 end
 
@@ -199,9 +205,12 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::North, defn::S
     x2 = parse(Float32, tokens[3])
     j1 = trunc(Int, (x1 - dom.xul) / dom.xres) + 1
     j2 = trunc(Int, (x2 - dom.xul) / dom.xres) + 1
-    for j in j1:j2
-        pos = dom.nrows * (j - 1) + 1
-        bci[pos] = FREE()
+    pos = min(j1, j2)
+    dist = 0.0
+    while pos <= dom.ncols && dist < abs(dom.xres)
+        bci[1+(pos-1)*dom.nrows] = FREE()
+        pos += 1
+        dist += abs(dom.xres)
     end
 end
 
@@ -211,9 +220,12 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::South, defn::S
     x2 = parse(Float32, tokens[3])
     j1 = trunc(Int, (x1 - dom.xul) / dom.xres) + 1
     j2 = trunc(Int, (x2 - dom.xul) / dom.xres) + 1
-    for j in j1:j2
-        pos = dom.nrows * (j - 1) + dom.nrows - 1
-        bci[pos] = FREE()
+    pos = min(j1, j2)
+    dist = 0.0
+    while pos <= dom.ncols && dist < abs(dom.xres)
+        bci[dom.nrows*pos] = FREE()
+        pos += 1
+        dist += abs(dom.xres)
     end
 end
 
