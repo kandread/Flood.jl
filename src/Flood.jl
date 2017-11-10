@@ -250,6 +250,32 @@ function read_bdy(filename::String)
     return bdy
 end
 
+# floodplain flow
+function dry_check!(h::Float32, Qx::Array{Float32}, Qy::Array{Float32}, dom::Domain, dt::Float32)
+    dA = dom.xres * (-dom.yres)
+    for i in 1:dom.nrows
+        for j in 1:dom.ncols
+            dh = dt * (Qx[i+(j-1)*dom.nrows] - Qx[i+j*dom.nrows] + Qy[i+(j-1)*(dom.nrows+1)] - Qy[i+1+(j-1)*(dom.nrows+1)]) / dA
+            if (dh + h[i+(j-1)*dom.nrows]) < 0.0
+                q_adjust = -(h[i+(j-1)*dom.nrows] / dh)
+                Qx[i+(j-1)*dom.nrows] *= q_adjust
+                Qx[i+j*dom.nrows] *= q_adjust
+                Qy[i+(j-1)*(dom.nrows+1)] *= q_adjust
+                Qy[i+1+(j-1)*(dom.nrows+1)] *= q_adjust
+            end
+        end
+    end
+end
+
+function calc_qx()
+end
+
+function calc_qy()
+end
+
+function calc_h()
+end
+
 # main function
 function run(paramfile::String)
     params = read_params(paramfile)
@@ -258,6 +284,13 @@ function run(paramfile::String)
     n = params.fpfric
     dx = domain.xres
     dy = -domain.yres
+    h = zeros(dom.nrows*dom.ncols)
+    Qx = zeros(dom.nrows*(dom.ncols+1))
+    Qy = zeros((dom.nrows+1)*dom.ncols)
+    t = 0.0
+    while t < params.sim_time
+        dt = params.init_tstep
+    end
 end
 
 end
