@@ -13,8 +13,6 @@ const depth_thresh = 0.001
 # boundary conditions
 abstract type BoundaryCondition end
 
-type NONE <: BoundaryCondition end
-
 struct HFIX <: BoundaryCondition
     values :: Array{Float32, 1}
 end
@@ -155,7 +153,7 @@ function get_boundary_type(str::String)
     return bctype[split(str)[1]]
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::String, dom::Domain)
+function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::Point, defn::String, dom::Domain)
     tokens = split(defn)
     x = parse(Float32, tokens[2])
     y = parse(Float32, tokens[3])
@@ -166,7 +164,7 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::Point, defn::Strin
     bci[pos] = BC(defn)
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::West, defn::String, dom::Domain)
+function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::West, defn::String, dom::Domain)
     tokens = split(defn)
     y1 = parse(Float32, tokens[2])
     y2 = parse(Float32, tokens[3])
@@ -178,7 +176,7 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::West, defn::String
     end
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::East, defn::String, dom::Domain)
+function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::East, defn::String, dom::Domain)
     tokens = split(defn)
     y1 = parse(Float32, tokens[2])
     y2 = parse(Float32, tokens[3])
@@ -190,7 +188,7 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::East, defn::String
     end
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::North, defn::String, dom::Domain)
+function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::North, defn::String, dom::Domain)
     tokens = split(defn)
     x1 = parse(Float32, tokens[2])
     x2 = parse(Float32, tokens[3])
@@ -202,7 +200,7 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::North, defn::Strin
     end
 end
 
-function set_boundary!(bci::Array{BoundaryCondition}, bctype::South, defn::String, dom::Domain)
+function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::South, defn::String, dom::Domain)
     tokens = split(defn)
     x1 = parse(Float32, tokens[2])
     x2 = parse(Float32, tokens[3])
@@ -215,19 +213,18 @@ function set_boundary!(bci::Array{BoundaryCondition}, bctype::South, defn::Strin
 end
 
 function read_bci(filename::String, dom::Domain)
-    bci = Array{BoundaryCondition}(dom.nrows * dom.ncols)
-    bci[:] = NONE
+    bci = Dict{Int, BoundaryCondition}()
     open(filename, "r") do f
         for line in eachline(f)
             bctype = get_boundary_type(line)
-            set_boundary!(bci, bctype(), line)
+            set_boundary!(bci, bctype(), line, dom)
         end
     end
     return bci
 end
 
 function read_bdy(filename::String)
-    bdy = Dict{String, Array{Float32, 2}}()
+    bdy = Dict{String, Dict{Int, Float32, 2}}()
     name = ""
     t = 0
     open(filename, "r") do f
@@ -243,7 +240,7 @@ function read_bdy(filename::String)
                         t += 1
                     else
                         duration = parse(Int, tokens[1])
-                        bdy[name] = Array{Float32, 2}(duration, 2)
+                        bdy[name] = Dict{Int, Float32, 2}(duration, 2)
                         t = 1
                     end
                 end
