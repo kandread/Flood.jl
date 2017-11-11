@@ -314,8 +314,8 @@ function calc_sx!(Sx::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom:
         if isa(get(bci, i, 0), FREE)
             Sx[i] = (bci[i].value == 0.0) ? Sx[i+dom.nrows] : bci[i].value
         end
-        if isa(get(bci, i+dom.ncols*dom.nrows, 0), FREE)
-            Sx[i+dom.ncols*dom.nrows] = (bci[i+dom.ncols*dom.nrows].value == 0.0) ? Sx[i+(dom.ncols-1)*dom.nrows] : bci[i+dom.ncols*dom.nrows].value
+        if isa(get(bci, i+(dom.ncols-1)*dom.nrows, 0), FREE)
+            Sx[i+dom.ncols*dom.nrows] = (bci[i+(dom.ncols-1)*dom.nrows].value == 0.0) ? Sx[i+(dom.ncols-1)*dom.nrows] : bci[i+(dom.ncols-1)*dom.nrows].value
         end
     end
 end
@@ -333,8 +333,8 @@ function calc_sy!(Sy::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom:
         if isa(get(bci, 1+(j-1)*dom.nrows, 0), FREE)
             Sy[1+(j-1)*(dom.nrows+1)] = (bci[1+(j-1)*dom.nrows].value == 0.0) ? Sy[2+(j-1)*(dom.nrows+1)] : bci[1+(j-1)*dom.nrows].value
         end
-        if isa(get(bci, 1+j*(dom.nrows+1), 0), FREE)
-            Sy[1+j*(dom.nrows+1)] = (bci[1+j*dom.nrows].value == 0.0) ? Sy[j*(dom.nrows+1)] : bci[1+j*dom.nrows].value
+        if isa(get(bci, dom.nrows+(j-1)*dom.nrows, 0), FREE)
+            Sy[dom.nrows+1+(j-1)*(dom.nrows+1)] = (bci[dom.nrows+(j-1)*dom.nrows].value == 0.0) ? Sy[dom.nrows+(j-1)*(dom.nrows+1)] : bci[dom.nrows+(j-1)*dom.nrows].value
         end
     end
 end
@@ -399,7 +399,7 @@ function calc_h!(h::Array{Float32}, Qx::Array{Float32}, Qy::Array{Float32}, dom:
             if isa(get(bci, i+(j-1)*dom.nrows, 0), QFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), QVAR)
                 # FIXME: Interpolate time series
                 # h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t) * dt / dx
-                h[i+(j-1)*dom.nrows] = h[i+(j-1)*dom.nrows] + (bci[i+(j-1)*dom.nrows].values[1]) * dt / dx
+                h[i+(j-1)*dom.nrows] += (bci[i+(j-1)*dom.nrows].values[1] * dt / dx)
             end
             if h[i+(j-1)*dom.nrows] < depth_thresh
                 h[i+(j-1)*dom.nrows] = 0.0
