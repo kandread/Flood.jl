@@ -16,28 +16,17 @@ abstract type BoundaryCondition end
 
 struct HFIX <: BoundaryCondition
     values :: Array{Float32, 1}
-end
-
-function hfix(defn::String)
-    values = [parse(Float32, split(defn)[5])]
-    return HFIX(values)
+    HFIX(defn::String) = new([parse(Float32, split(defn)[5])])
 end
 
 struct QFIX <: BoundaryCondition
     values :: Array{Float32, 1}
-end
-
-function qfix(defn::String)
-    values = [parse(Float32, split(defn)[5])]
-    return QFIX(values)
+    QFIX(defn::String) = new([parse(Float32, split(defn)[5])])
 end
 
 struct FREE <: BoundaryCondition
     value :: Float32
-end
-
-function free(val=0.0)
-    return FREE(val)
+    FREE(val=0.0) = new(val)
 end
 
 mutable struct QVAR <: BoundaryCondition
@@ -45,10 +34,7 @@ mutable struct QVAR <: BoundaryCondition
     prev_time :: Int
     time :: Array{Float32}
     values :: Array{Float32}
-end
-
-function qvar(defn::String)
-    return QVAR(split(defn)[5], 0, [], [])
+    QVAR(defn::String) = new(split(defn)[5], 0, [], [])
 end
 
 mutable struct HVAR <: BoundaryCondition
@@ -56,10 +42,7 @@ mutable struct HVAR <: BoundaryCondition
     prev_time :: Int
     time :: Array{Float32}
     values :: Array{Float32}
-end
-
-function hvar(defn::String)
-    return HVAR(split(defn)[5], 0, [], [])
+    HVAR(defn::String) = new(split(defn)[5], 0, [], [])
 end
 
 # domain data structure
@@ -177,7 +160,7 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::Point, defn::S
     tokens = split(defn)
     x = parse(Float32, tokens[2])
     y = parse(Float32, tokens[3])
-    BC = eval(parse(lowercase(tokens[4])))
+    BC = eval(parse(tokens[4]))
     j = trunc(Int, (x - dom.xul) / dom.xres) + 1
     i = trunc(Int, (y - dom.yul) / dom.yres) + 1
     pos = dom.nrows * (j - 1) + i
