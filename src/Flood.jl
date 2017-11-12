@@ -176,7 +176,7 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::West, defn::St
     pos = min(i1, i2)
     dist = 0.0
     while pos <= dom.nrows && dist < abs(dom.yres)
-        bci[pos] = free()
+        bci[pos] = FREE()
         pos +=1
         dist += abs(dom.yres)
     end
@@ -191,7 +191,7 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::East, defn::St
     pos = min(i1, i2)
     dist = 0.0
     while pos <= dom.nrows && dist < abs(dom.yres)
-        bci[pos+(dom.ncols-1)*dom.nrows] = free()
+        bci[pos+(dom.ncols-1)*dom.nrows] = FREE()
         pos +=1
         dist += abs(dom.yres)
     end
@@ -206,7 +206,7 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::North, defn::S
     pos = min(j1, j2)
     dist = 0.0
     while pos <= dom.ncols && dist < abs(dom.xres)
-        bci[1+(pos-1)*dom.nrows] = free()
+        bci[1+(pos-1)*dom.nrows] = FREE()
         pos += 1
         dist += abs(dom.xres)
     end
@@ -221,7 +221,7 @@ function set_boundary!(bci::Dict{Int, BoundaryCondition}, bctype::South, defn::S
     pos = min(j1, j2)
     dist = 0.0
     while pos <= dom.ncols && dist < abs(dom.xres)
-        bci[dom.nrows*pos] = free()
+        bci[dom.nrows*pos] = FREE()
         pos += 1
         dist += abs(dom.xres)
     end
@@ -323,18 +323,28 @@ function calc_sy!(Sy::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom:
 end
 
 
-function calc_qx!(Qx::Array{Float32}, Sx::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom::Domain, dt::Float32, n::Float32)
+function calc_qx!(Qx::Array{Float32}, Sx::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom::Domain, bci::Dict{Int64, BoundaryCondition}, dt::Float32, n::Float32)
     dx = dom.xres
     for i in 1:dom.nrows
-        for j in 1:dom.ncols+1
+        if isa(get(bci, i, 0), FREE)
+            hflow = min(h[i], max_hflow)
+            q = Qx[i] / dx
+            Qx[i] = (hflow > 0) ? -((abs(q) + abs(g * hflow * dt * Sx[i])) / (1 + g * dt * n * n * abs(q) / hflow^(7/3))) * dx : 0.0
+        else
+            Qx[i] = 0.0
+        end
+        if isa(get(bci, i+(dom.ncols-1)*dom.nrows, 0), FREE)
+            hflow = min(h[i+(dom.ncols-1)*dom.nrows], max_hflow)
+            q = Qx[i+dom.ncols*dom.nrows] / dx
+            Qx[i+dom.ncols*dom.nrows] = (hflow > 0) ? ((abs(q) + abs(g * hflow * dt * Sx[i+dom.ncols*dom.nrows])) / (1 + g * dt * n * n * abs(q) / hflow^(7/3))) * dx : 0.0
+        else
+            Qx[i+dom.ncols*dom.nrows] = 0.0
+        end
+    end
+    for i in 1:dom.nrows
+        for j in 2:dom.ncols
             q = Qx[i+(j-1)*dom.nrows] / dx
-            if j == 1
-                hflow = h[i+(j-1)*dom.nrows]
-            elseif j == dom.ncols+1
-                hflow = h[i+(j-2)*dom.nrows]
-            else
-                hflow = max(h[i+(j-1)*dom.nrows] + z[i+(j-1)*dom.nrows], h[i+(j-2)*dom.nrows] + z[i+(j-2)*dom.nrows]) - max(z[i+(j-1)*dom.nrows], z[i+(j-2)*dom.nrows])
-            end
+            hflow = max(h[i+(j-1)*dom.nrows] + z[i+(j-1)*dom.nrows], h[i+(j-2)*dom.nrows] + z[i+(j-2)*dom.nrows]) - max(z[i+(j-1)*dom.nrows], z[i+(j-2)*dom.nrows])
             hflow = min(hflow, max_hflow)
             if hflow > 0
                 Qx[i+(j-1)*dom.nrows] = ((q - g * hflow * dt * Sx[i+(j-1)*dom.nrows]) / (1.0 + g * dt * n * n * abs(q) / hflow^(7/3))) * dx
@@ -345,18 +355,28 @@ function calc_qx!(Qx::Array{Float32}, Sx::Array{Float32}, h::Array{Float32}, z::
     end
 end
 
-function calc_qy!(Qy::Array{Float32}, Sy::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom::Domain, dt::Float32, n::Float32)
+function calc_qy!(Qy::Array{Float32}, Sy::Array{Float32}, h::Array{Float32}, z::Array{Float32}, dom::Domain, bci::Dict{Int64, BoundaryCondition}, dt::Float32, n::Float32)
     dy = -dom.yres
-    for i in 1:dom.nrows+1
+    for j in 1:dom.ncols
+        if isa(get(bci, 1+(j-1)*dom.nrows, 0), FREE)
+            hflow = min(h[1+(j-1)*dom.nrows], max_hflow)
+            q = Qy[1+(j-1)*(dom.nrows+1)] / dy
+            Qy[1+(j-1)*(dom.nrows+1)] = (hflow > 0) ? -((abs(q) + abs(g * hflow * dt * Sy[1+(j-1)*(dom.nrows+1)])) / (1 + g * dt * n * n * abs(q) / hflow^(7/3))) * dy : 0.0
+        else
+            Qy[1+(j-1)*(dom.nrows+1)] = 0.0
+        end
+        if isa(get(bci, dom.nrows+(j-1)*dom.nrows, 0), FREE)
+            hflow = min(h[dom.nrows+(j-1)*dom.nrows], max_hflow)
+            q = Qy[dom.nrows+1+(j-1)*(dom.nrows+1)] / dy
+            Qy[dom.nrows+1+(j-1)*(dom.nrows+1)] = (hflow > 0) ? ((abs(q) + abs(g * hflow * dt * Sy[dom.nrows+1+(j-1)*(dom.nrows+1)])) / (1 + g * dt * n * n * abs(q) / hflow^(7/3))) * dy : 0.0
+        else
+            Qy[dom.nrows+1+(j-1)*(dom.nrows+1)] = 0.0
+        end
+    end
+    for i in 2:dom.nrows
         for j in 1:dom.ncols
             q = Qy[i+(j-1)*(dom.nrows+1)] / dy
-            if i == 1
-                hflow = h[1+(j-1)*dom.nrows]
-            elseif i == dom.nrows+1
-                hflow = h[j*dom.nrows]
-            else
-                hflow = max(h[i+(j-1)*dom.nrows] + z[i+(j-1)*dom.nrows], h[i-1+(j-1)*dom.nrows] + z[i-1+(j-1)*dom.nrows]) - max(z[i+(j-1)*dom.nrows], z[i-1+(j-1)*dom.nrows])
-            end
+            hflow = max(h[i+(j-1)*dom.nrows] + z[i+(j-1)*dom.nrows], h[i-1+(j-1)*dom.nrows] + z[i-1+(j-1)*dom.nrows]) - max(z[i+(j-1)*dom.nrows], z[i-1+(j-1)*dom.nrows])
             hflow = min(hflow, max_hflow)
             if hflow > 0
                 Qy[i+(j-1)*(dom.nrows+1)] = ((q - g * hflow * dt * Sy[i+(j-1)*(dom.nrows+1)]) / (1.0 + g * dt * n * n * abs(q) / hflow^(7/3))) * dy
@@ -414,8 +434,8 @@ function run(paramfile::String)
         dt = params.init_tstep
         calc_sx!(Sx, h, z, dom, bci)
         calc_sy!(Sy, h, z, dom, bci)
-        calc_qx!(Qx, Sx, h, z, dom, dt, n)
-        calc_qy!(Qy, Sy, h, z, dom, dt, n)
+        calc_qx!(Qx, Sx, h, z, dom, bci, dt, n)
+        calc_qy!(Qy, Sy, h, z, dom, bci, dt, n)
         dry_check!(h, Qx, Qy, dom, dt)
         calc_h!(h, Qx, Qy, dom, bci, t, dt)
         t += dt
