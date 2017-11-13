@@ -34,7 +34,7 @@ mutable struct QVAR <: BoundaryCondition
     prev_time :: Int
     time :: Array{Float32}
     values :: Array{Float32}
-    QVAR(defn::String) = new(split(defn)[5], 0, [], [])
+    QVAR(defn::String) = new(split(defn)[5], 1, [], [])
 end
 
 mutable struct HVAR <: BoundaryCondition
@@ -42,7 +42,27 @@ mutable struct HVAR <: BoundaryCondition
     prev_time :: Int
     time :: Array{Float32}
     values :: Array{Float32}
-    HVAR(defn::String) = new(split(defn)[5], 0, [], [])
+    HVAR(defn::String) = new(split(defn)[5], 1, [], [])
+end
+
+function interpolate_value(bc::Union{QFIX, HFIX}, t::Float64, dt::Float32)
+    return bc.values[1]
+end
+
+function interpolate_value(bc::Union{QVAR, HVAR}, t::Float64, dt::Float32)
+    if t <= bc.times[1]
+        val = bc.values[1]
+    elseif t >= bc.times[end]
+        val = bc.values[end]
+    else
+        ti = bc.prev_time
+        while bc.times[ti] <= t
+            ti += 1
+        end
+        a = (t - bc.times[ti-1]) / dt
+        val = a * bc.values[ti-1] + (1 - a) * bc.values[ti]
+    end
+    return val
 end
 
 # domain data structure
@@ -393,16 +413,12 @@ function calc_h!(h::Array{Float32}, Qx::Array{Float32}, Qy::Array{Float32}, dom:
     for i in 1:dom.nrows
         for j in 1:dom.ncols
             if isa(get(bci, i+(j-1)*dom.nrows, 0), HFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), HVAR)
-                # FIXME: Interpolate time series
-                # h[i+(j-1)*dom.nrows] = interpolate_value(bci[i+(j-1)*dom.nrows], t)
-                h[i+(j-1)*dom.nrows] = bci[i+(j-1)*dom.nrows].values[1]
+                h[i+(j-1)*dom.nrows] = interpolate_value(bci[i+(j-1)*dom.nrows], t, dt)
             else
                 h[i+(j-1)*dom.nrows] += (dt * (Qx[i+(j-1)*dom.nrows] - Qx[i+j*dom.nrows] + Qy[i+(j-1)*(dom.nrows+1)] - Qy[i+1+(j-1)*(dom.nrows+1)]) / (dx * dy))
             end
             if isa(get(bci, i+(j-1)*dom.nrows, 0), QFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), QVAR)
-                # FIXME: Interpolate time series
-                # h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t) * dt / dx
-                h[i+(j-1)*dom.nrows] += (bci[i+(j-1)*dom.nrows].values[1] * dt / dx)
+                h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t, dt) * dt / dx
             end
             if h[i+(j-1)*dom.nrows] < depth_thresh
                 h[i+(j-1)*dom.nrows] = 0.0
