@@ -440,7 +440,7 @@ function run(paramfile::String)
         calc_h!(h, Qx, Qy, dom, bci, t, dt)
         t += dt
         if t >= cur_save
-            write_raster(@sprintf("h-%04d.tif", cur_save), h, dom, H)
+            write_raster(@sprintf("h-%04d.tif", cur_save / params.saveint), h, dom, H)
             cur_save += params.saveint
         end
     end
