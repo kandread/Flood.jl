@@ -45,11 +45,11 @@ mutable struct HVAR <: BoundaryCondition
     HVAR(defn::String) = new(split(defn)[5], 1, [], [])
 end
 
-function interpolate_value(bc::Union{QFIX, HFIX}, t::Float64, dt::Float32)
+function interpolate_value(bc::Union{QFIX, HFIX}, t::Float64)
     return bc.values[1]
 end
 
-function interpolate_value(bc::Union{QVAR, HVAR}, t::Float64, dt::Float32)
+function interpolate_value(bc::Union{QVAR, HVAR}, t::Float64)
     if t <= bc.times[1]
         val = bc.values[1]
     elseif t >= bc.times[end]
@@ -59,6 +59,7 @@ function interpolate_value(bc::Union{QVAR, HVAR}, t::Float64, dt::Float32)
         while bc.times[ti] <= t
             ti += 1
         end
+        dt = bc.times[ti] - bc.times[ti-1]
         a = (t - bc.times[ti-1]) / dt
         val = a * bc.values[ti-1] + (1 - a) * bc.values[ti]
     end
