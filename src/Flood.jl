@@ -414,12 +414,12 @@ function calc_h!(h::Array{Float32}, Qx::Array{Float32}, Qy::Array{Float32}, dom:
     for i in 1:dom.nrows
         for j in 1:dom.ncols
             if isa(get(bci, i+(j-1)*dom.nrows, 0), HFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), HVAR)
-                h[i+(j-1)*dom.nrows] = interpolate_value(bci[i+(j-1)*dom.nrows], t, dt)
+                h[i+(j-1)*dom.nrows] = interpolate_value(bci[i+(j-1)*dom.nrows], t)
             else
                 h[i+(j-1)*dom.nrows] += (dt * (Qx[i+(j-1)*dom.nrows] - Qx[i+j*dom.nrows] + Qy[i+(j-1)*(dom.nrows+1)] - Qy[i+1+(j-1)*(dom.nrows+1)]) / (dx * dy))
             end
             if isa(get(bci, i+(j-1)*dom.nrows, 0), QFIX) || isa(get(bci, i+(j-1)*dom.nrows, 0), QVAR)
-                h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t, dt) * dt / dx
+                h[i+(j-1)*dom.nrows] += interpolate_value(bci[i+(j-1)*dom.nrows], t) * dt / dx
             end
             if h[i+(j-1)*dom.nrows] < depth_thresh
                 h[i+(j-1)*dom.nrows] = 0.0
