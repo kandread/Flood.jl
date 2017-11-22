@@ -16,5 +16,5 @@ saveint                  86400.0
 fpfric             0.06
 bcifile                  qfix.bci
 adaptoff
-stagefile         test.stage
+acceleration
 

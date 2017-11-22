@@ -9,18 +9,14 @@
 DEMfile                  dtm.asc
 resroot                  BCTest
 dirroot             output
-#sim_time               86400.0
-sim_time               100.0
+sim_time               86400.0
 initial_tstep            1
-#massint                  360.0
-massint                  1.0
-#saveint                  86400.0
-saveint                  1.0
+massint                  360.0
+saveint                  86400.0
 fpfric             0.06
 bcifile                  qvar.bci
 bdyfile                  qvar.bdy
-#adaptoff
-qoutput
+adaptoff
+#qoutput
 acceleration
-stagefile         BCTest.stage
 
