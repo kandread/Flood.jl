@@ -141,15 +141,15 @@ end
 function write_raster(filename::String, data::Array{Float32, 2}, dom::Domain)
     nrows, ncols = size(data)
     f = open(filename, "w")
-    write(f, "ncols\t$dom.ncols\n")
-    write(f, "nrows\t$dom.nrows\n")
-    write(f, "xllcorner\t$dom.xul\n")
+    @printf(f, "ncols\t%d\n", dom.ncols)
+    @printf(f, "nrows\t%d\n", dom.nrows)
+    @printf(f, "xllcorner\t%.4f\n", dom.xul)
     yll = dom.yul + dom.nrows * dom.yres
-    write(f, "yllcorner\t$yll\n")
+    @printf(f, "yllcorner\t%.4f\n", yll)
     write(f, "NODATA_value\t-9999\n")
     for i in 1:nrows
         for j in 1:ncols
-            write(f, @sprintf("%.3f ", data[i, j]))
+            @printf(f, "%.3f ", data[i, j])
         end
         write(f, "\n")
     end
@@ -457,6 +457,8 @@ function run(paramfile::String)
         t += dt
         if t >= cur_save
             write_raster(@sprintf("h-%04d.asc", cur_save / params.saveint), h, dom)
+            write_raster(@sprintf("qx-%04d.asc", cur_save / params.saveint), Qx, dom)
+            write_raster(@sprintf("qy-%04d.asc", cur_save / params.saveint), Qy, dom)
             cur_save += params.saveint
         end
     end
