@@ -1,7 +1,5 @@
 module Flood
 
-import GDAL
-
 # constants
 const g = 9.81
 const alpha = 0.7
@@ -122,31 +120,38 @@ end
 
 # raster input and output
 function read_raster(filename::String)
-    GDAL.registerall()
-    ds = GDAL.open(filename, GDAL.GA_ReadOnly)
-    nrows = GDAL.getrasterysize(ds)
-    ncols = GDAL.getrasterxsize(ds)
-    band = GDAL.getrasterband(ds, 1)
-    dtype = GDAL.getrasterdatatype(band)
-    jtype = eval(parse(GDAL.getdatatypename(GDAL.getrasterdatatype(band))))
-    data = Array{jtype}(nrows*ncols)
-    GDAL.rasterio(band, GDAL.GF_Read, 0, 0, ncols, nrows, data, ncols, nrows, dtype, 0, 0)
-    GDAL.close(ds)
-    data = reshape(data, (nrows, ncols))
+    f = open(filename)
+    ncols = parse(Int, split(readline(f))[2])
+    nrows = parse(Int, split(readline(f))[2])
+    xll = parse(Float32, split(readline(f))[2])
+    yll = parse(Float32, split(readline(f))[2])
+    cellsize = parse(Float32, split(readline(f))[2])
+    nodata = parse(Float32, split(readline(f))[2])
+    data = zeros(nrows, ncols)
+    for i in 1:nrows
+        line = readline(f)
+        data[i, :] = [parse(Float32, s) for s in split(line)]
+    end
+    close(f)
     return data
 end
 
-function write_raster(filename::String, data::Array{Float32, 2}, dom::Domain, format="GTiff")
-    GDAL.registerall()
-    gt = Array([dom.xul, dom.xres, 0., dom.yul, 0., dom.yres])
+function write_raster(filename::String, data::Array{Float32, 2}, dom::Domain)
     nrows, ncols = size(data)
-    driver = GDAL.getdriverbyname(format)
-    ds = GDAL.create(driver, filename, ncols, nrows, 1, GDAL.GDT_Float32, C_NULL)
-    GDAL.setgeotransform(ds, gt)
-    band = GDAL.getrasterband(ds, 1)
-    data = reshape(data, nrows*ncols)
-    GDAL.rasterio(band, GDAL.GF_Write, 0, 0, ncols, nrows, data, ncols, nrows, GDAL.GDT_Float32, 0, 0)
-    GDAL.close(ds)
+    f = open(filename, "w")
+    write(f, "ncols\t$dom.ncols\n")
+    write(f, "nrows\t$dom.nrows\n")
+    write(f, "xllcorner\t$dom.xul\n")
+    yll = dom.yul + dom.nrows * dom.yres
+    write(f, "yllcorner\t$yll\n")
+    write(f, "NODATA_value\t-9999\n")
+    for i in 1:nrows
+        for j in 1:ncols
+            write(f, @sprintf("%.3f ", data[i, j]))
+        end
+        write(f, "\n")
+    end
+    close(f)
 end
 
 # boundary conditions
@@ -460,7 +465,7 @@ function run(paramfile::String)
         calc_h!(h, Qx, Qy, dom, bci, t, dt)
         t += dt
         if t >= cur_save
-            write_raster(@sprintf("h-%04d.tif", cur_save / params.saveint), h, dom)
+            write_raster(@sprintf("h-%04d.asc", cur_save / params.saveint), h, dom)
             cur_save += params.saveint
         end
     end
