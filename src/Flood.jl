@@ -56,7 +56,7 @@ function interpolate_value(bc::Union{QVAR, HVAR}, t::Float64)
         end
         dt = bc.time[ti] - bc.time[ti-1]
         a = (t - bc.time[ti-1]) / dt
-        val = a * bc.values[ti-1] + (1 - a) * bc.values[ti]
+        val = (1 - a) * bc.values[ti-1] + a * bc.values[ti]
     end
     return val
 end
@@ -146,6 +146,7 @@ function write_raster(filename::String, data::Array{Float32, 2}, dom::Domain)
     @printf(f, "xllcorner\t%.4f\n", dom.xul)
     yll = dom.yul + dom.nrows * dom.yres
     @printf(f, "yllcorner\t%.4f\n", yll)
+    @printf(f, "cellsize\t%.4f\n", dom.xres)
     write(f, "NODATA_value\t-9999\n")
     for i in 1:nrows
         for j in 1:ncols
@@ -315,9 +316,13 @@ function calc_sx!(Sx::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32,
     for i in 1:dom.nrows
         if isa(get(bci, (i, 1), 0), FREE)
             Sx[i, 1] = bci[(i, 1)].value == 0.0 ? Sx[i, 2] : bci[(i, 1)].value
+        else
+            Sx[i, 1] = 0.0
         end
         if isa(get(bci, (i, dom.ncols), 0), FREE)
             Sx[i, dom.ncols+1] = bci[(i, dom.ncols)].value == 0.0 ? Sx[i, dom.ncols] : bci[(i, dom.ncols)].value
+        else
+            Sx[i, dom.ncols+1] = 0.0
         end
     end
 end
@@ -334,9 +339,13 @@ function calc_sy!(Sy::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32,
     for j in 1:dom.ncols
         if isa(get(bci, (1, j), 0), FREE)
             Sy[1, j] = bci[(1, j)].value == 0.0 ? Sy[2, j] : bci[(1, j)].value
+        else
+            Sy[1, j] = 0.0
         end
         if isa(get(bci, (dom.nrows, j), 0), FREE)
             Sy[dom.nrows+1, j] = bci[(dom.nrows, j)].value == 0.0 ? Sy[dom.nrows, j] : bci[(dom.nrows, j)].value
+        else
+            Sy[dom.nrows+1, j] = 0.0
         end
     end
 end
@@ -417,7 +426,7 @@ function calc_h!(h::Array{Float32, 2}, Qx::Array{Float32, 2}, Qy::Array{Float32,
                 h[i, j] += (dt * (Qx[i, j] - Qx[i, j+1] + Qy[i, j] - Qy[i+1, j]) / (dx * dy))
             end
             if isa(get(bci, (i, j), 0), QFIX) || isa(get(bci, (i, j), 0), QVAR)
-                h[i, j] += interpolate_value(bci[(i, j)], t) * dt / dx
+                h[i, j] += interpolate_value(bci[(i, j)], t) * dt  / dx
             end
             if h[i, j] < depth_thresh
                 h[i, j] = 0.0
