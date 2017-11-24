@@ -129,7 +129,7 @@ function read_raster(filename::String)
     yll = parse(Float32, split(readline(f))[2])
     cellsize = parse(Float32, split(readline(f))[2])
     nodata = parse(Float32, split(readline(f))[2])
-    data = zeros(nrows, ncols)
+    data = zeros(Float32, nrows, ncols)
     for i in 1:nrows
         line = readline(f)
         data[i, :] = [parse(Float32, s) for s in split(line)]
@@ -288,7 +288,7 @@ function read_bdy!(bci::Dict{Index, BoundaryCondition}, filename::String)
 end
 
 # floodplain flow
-function dry_check!(h::Array{Float32, 2}, Qx::Array{Float32, 2}, Qy::Array{Float32, 2}, dom::Domain, dt::Float32)
+function dry_check!(h::Array{Float32, 2}, Qx::Array{Float32, 2}, Qy::Array{Float32, 2}, dom::Domain, dt::Real)
     dA = dom.xres * (-dom.yres)
     for i in 1:dom.nrows
         for j in 1:dom.ncols
@@ -317,12 +317,12 @@ function calc_sx!(Sx::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32,
         if isa(get(bci, (i, 1), 0), FREE)
             Sx[i, 1] = bci[(i, 1)].value == 0.0 ? Sx[i, 2] : bci[(i, 1)].value
         else
-            Sx[i, 1] = 0.0
+            Sx[i, 1] = Sx[i, 2]
         end
         if isa(get(bci, (i, dom.ncols), 0), FREE)
             Sx[i, dom.ncols+1] = bci[(i, dom.ncols)].value == 0.0 ? Sx[i, dom.ncols] : bci[(i, dom.ncols)].value
         else
-            Sx[i, dom.ncols+1] = 0.0
+            Sx[i, dom.ncols+1] = Sx[i, dom.ncols]
         end
     end
 end
@@ -340,18 +340,18 @@ function calc_sy!(Sy::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32,
         if isa(get(bci, (1, j), 0), FREE)
             Sy[1, j] = bci[(1, j)].value == 0.0 ? Sy[2, j] : bci[(1, j)].value
         else
-            Sy[1, j] = 0.0
+            Sy[1, j] = Sy[2, j]
         end
         if isa(get(bci, (dom.nrows, j), 0), FREE)
             Sy[dom.nrows+1, j] = bci[(dom.nrows, j)].value == 0.0 ? Sy[dom.nrows, j] : bci[(dom.nrows, j)].value
         else
-            Sy[dom.nrows+1, j] = 0.0
+            Sy[dom.nrows+1, j] = Sy[dom.nrows, j]
         end
     end
 end
 
 
-function calc_qx!(Qx::Array{Float32, 2}, Sx::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32, 2}, dom::Domain, bci::Dict{Index, BoundaryCondition}, dt::Float32, n::Float32)
+function calc_qx!(Qx::Array{Float32, 2}, Sx::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32, 2}, dom::Domain, bci::Dict{Index, BoundaryCondition}, dt::Real, n::Float32)
     dx = dom.xres
     for i in 1:dom.nrows
         if isa(get(bci, (i, 1), 0), FREE)
@@ -383,7 +383,7 @@ function calc_qx!(Qx::Array{Float32, 2}, Sx::Array{Float32, 2}, h::Array{Float32
     end
 end
 
-function calc_qy!(Qy::Array{Float32, 2}, Sy::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32, 2}, dom::Domain, bci::Dict{Index, BoundaryCondition}, dt::Float32, n::Float32)
+function calc_qy!(Qy::Array{Float32, 2}, Sy::Array{Float32, 2}, h::Array{Float32, 2}, z::Array{Float32, 2}, dom::Domain, bci::Dict{Index, BoundaryCondition}, dt::Real, n::Float32)
     dy = -dom.yres
     for j in 1:dom.ncols
         if isa(get(bci, (1, j), 0), FREE)
@@ -466,7 +466,7 @@ function run(paramfile::String)
     cur_save = 0.0
     t = 0.0
     while t < params.sim_time
-        dt = params.init_tstep
+        dt = calc_timestep(h, dom, params)
         calc_sx!(Sx, h, z, dom, bci)
         calc_sy!(Sy, h, z, dom, bci)
         calc_qx!(Qx, Sx, h, z, dom, bci, dt, n)
