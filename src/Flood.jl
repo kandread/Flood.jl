@@ -435,14 +435,24 @@ function calc_h!(h::Array{Float32, 2}, Qx::Array{Float32, 2}, Qy::Array{Float32,
     end
 end
 
+"""Calculate time step for numerically stable solution based on Courant–Friedrichs–Lewy condition."""
+function calc_timestep(h::Array{Float32, 2}, dom::Domain, params::Params)
+    dx = dom.xres
+    hmax = maximum(h)
+    if hmax > depth_thresh
+        dt = alpha * dx / sqrt(hmax * g)
+    else
+        dt = params.init_tstep
+    end
+    return dt
+end
+
 
 # main function
 function run(paramfile::String)
     params = read_params(paramfile)
     dom = read_domain(params.dem_file)
     z = read_raster(params.dem_file)
-    z = convert(Array{Float32}, z)
-    z = reshape(z, dom.nrows, dom.ncols)
     bci = read_bci(params.bci_file, dom)
     if !isempty(params.bdy_file)
         read_bdy!(bci, params.bdy_file)
